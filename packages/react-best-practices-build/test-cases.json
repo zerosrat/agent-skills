@@ -33,22 +33,6 @@
   },
   {
     "ruleId": "",
-    "ruleTitle": "Prevent Waterfall Chains in API Routes",
-    "type": "bad",
-    "code": "export async function GET(request: Request) {\n  const session = await auth()\n  const config = await fetchConfig()\n  const data = await fetchData(session.user.id)\n  return Response.json({ data, config })\n}",
-    "language": "typescript",
-    "description": "config waits for auth, data waits for both"
-  },
-  {
-    "ruleId": "",
-    "ruleTitle": "Prevent Waterfall Chains in API Routes",
-    "type": "good",
-    "code": "export async function GET(request: Request) {\n  const sessionPromise = auth()\n  const configPromise = fetchConfig()\n  const session = await sessionPromise\n  const [config, data] = await Promise.all([\n    configPromise,\n    fetchData(session.user.id)\n  ])\n  return Response.json({ data, config })\n}",
-    "language": "typescript",
-    "description": "auth and config start immediately"
-  },
-  {
-    "ruleId": "",
     "ruleTitle": "Defer Await Until Needed",
     "type": "bad",
     "code": "async function handleRequest(userId: string, skipProcessing: boolean) {\n  const userData = await fetchUserData(userId)\n  \n  if (skipProcessing) {\n    // Returns immediately but still waited for userData\n    return { skipped: true }\n  }\n  \n  // Only this branch uses userData\n  return processUserData(userData)\n}",
@@ -94,22 +78,6 @@
     "code": "const [user, posts, comments] = await Promise.all([\n  fetchUser(),\n  fetchPosts(),\n  fetchComments()\n])",
     "language": "typescript",
     "description": "parallel execution, 1 round trip"
-  },
-  {
-    "ruleId": "",
-    "ruleTitle": "Strategic Suspense Boundaries",
-    "type": "bad",
-    "code": "async function Page() {\n  const data = await fetchData() // Blocks entire page\n  \n  return (\n    <div>\n      <div>Sidebar</div>\n      <div>Header</div>\n      <div>\n        <DataDisplay data={data} />\n      </div>\n      <div>Footer</div>\n    </div>\n  )\n}",
-    "language": "tsx",
-    "description": "wrapper blocked by data fetching"
-  },
-  {
-    "ruleId": "",
-    "ruleTitle": "Strategic Suspense Boundaries",
-    "type": "good",
-    "code": "function Page() {\n  return (\n    <div>\n      <div>Sidebar</div>\n      <div>Header</div>\n      <div>\n        <Suspense fallback={<Skeleton />}>\n          <DataDisplay />\n        </Suspense>\n      </div>\n      <div>Footer</div>\n    </div>\n  )\n}\n\nasync function DataDisplay() {\n  const data = await fetchData() // Only blocks this component\n  return <div>{data.content}</div>\n}",
-    "language": "tsx",
-    "description": "wrapper shows immediately, data streams in"
   },
   {
     "ruleId": "",
@@ -225,19 +193,27 @@
   },
   {
     "ruleId": "",
-    "ruleTitle": "Batch DOM CSS Changes",
+    "ruleTitle": "Avoid Layout Thrashing",
     "type": "bad",
-    "code": "function updateElementStyles(element: HTMLElement) {\n  element.style.width = '100px'\n  const width = element.offsetWidth  // Forces reflow\n  element.style.height = '200px'\n  const height = element.offsetHeight  // Forces another reflow\n}",
+    "code": "function layoutThrashing(element: HTMLElement) {\n  element.style.width = '100px'\n  const width = element.offsetWidth  // Forces reflow\n  element.style.height = '200px'\n  const height = element.offsetHeight  // Forces another reflow\n}",
     "language": "typescript",
     "description": "interleaved reads and writes force reflows"
   },
   {
     "ruleId": "",
-    "ruleTitle": "Batch DOM CSS Changes",
+    "ruleTitle": "Avoid Layout Thrashing",
     "type": "good",
-    "code": "function updateElementStyles(element: HTMLElement) {\n  element.classList.add('highlighted-box')\n\n  const { width, height } = element.getBoundingClientRect()\n}",
+    "code": "function updateElementStyles(element: HTMLElement) {\n  // Batch all writes together\n  element.style.width = '100px'\n  element.style.height = '200px'\n  element.style.backgroundColor = 'blue'\n  element.style.border = '1px solid black'\n  \n  // Read after all writes are done (single reflow)\n  const { width, height } = element.getBoundingClientRect()\n}",
     "language": "typescript",
     "description": "batch writes, then read once"
+  },
+  {
+    "ruleId": "",
+    "ruleTitle": "Avoid Layout Thrashing",
+    "type": "good",
+    "code": "function updateElementStyles(element: HTMLElement) {\n  element.classList.add('highlighted-box')\n  \n  const { width, height } = element.getBoundingClientRect()\n}",
+    "language": "typescript",
+    "description": "batch reads, then writes"
   },
   {
     "ruleId": "",
@@ -473,30 +449,6 @@
   },
   {
     "ruleId": "",
-    "ruleTitle": "Prevent Hydration Mismatch Without Flickering",
-    "type": "bad",
-    "code": "function ThemeWrapper({ children }: { children: ReactNode }) {\n  // localStorage is not available on server - throws error\n  const theme = localStorage.getItem('theme') || 'light'\n  \n  return (\n    <div className={theme}>\n      {children}\n    </div>\n  )\n}",
-    "language": "tsx",
-    "description": "breaks SSR"
-  },
-  {
-    "ruleId": "",
-    "ruleTitle": "Prevent Hydration Mismatch Without Flickering",
-    "type": "bad",
-    "code": "function ThemeWrapper({ children }: { children: ReactNode }) {\n  const [theme, setTheme] = useState('light')\n  \n  useEffect(() => {\n    // Runs after hydration - causes visible flash\n    const stored = localStorage.getItem('theme')\n    if (stored) {\n      setTheme(stored)\n    }\n  }, [])\n  \n  return (\n    <div className={theme}>\n      {children}\n    </div>\n  )\n}",
-    "language": "tsx",
-    "description": "visual flickering"
-  },
-  {
-    "ruleId": "",
-    "ruleTitle": "Prevent Hydration Mismatch Without Flickering",
-    "type": "good",
-    "code": "function ThemeWrapper({ children }: { children: ReactNode }) {\n  return (\n    <>\n      <div id=\"theme-wrapper\">\n        {children}\n      </div>\n      <script\n        dangerouslySetInnerHTML={{\n          __html: `\n            (function() {\n              try {\n                var theme = localStorage.getItem('theme') || 'light';\n                var el = document.getElementById('theme-wrapper');\n                if (el) el.className = theme;\n              } catch (e) {}\n            })();\n          `,\n        }}\n      />\n    </>\n  )\n}",
-    "language": "tsx",
-    "description": "no flicker, no hydration mismatch"
-  },
-  {
-    "ruleId": "",
     "ruleTitle": "Optimize SVG Precision",
     "type": "bad",
     "code": "<path d=\"M 10.293847 20.847362 L 30.938472 40.192837\" />",
@@ -593,6 +545,22 @@
   },
   {
     "ruleId": "",
+    "ruleTitle": "Extract Default Non-primitive Parameter Value from Memoized Component to Constant",
+    "type": "bad",
+    "code": "const UserAvatar = memo(function UserAvatar({ onClick = () => {} }: { onClick?: () => void }) {\n  // ...\n})\n\n// Used without optional onClick\n<UserAvatar />",
+    "language": "tsx",
+    "description": "`onClick` has different values on every rerender"
+  },
+  {
+    "ruleId": "",
+    "ruleTitle": "Extract Default Non-primitive Parameter Value from Memoized Component to Constant",
+    "type": "good",
+    "code": "const NOOP = () => {};\n\nconst UserAvatar = memo(function UserAvatar({ onClick = NOOP }: { onClick?: () => void }) {\n  // ...\n})\n\n// Used without optional onClick\n<UserAvatar />",
+    "language": "tsx",
+    "description": "stable default value"
+  },
+  {
+    "ruleId": "",
     "ruleTitle": "Extract to Memoized Components",
     "type": "bad",
     "code": "function Profile({ user, loading }: Props) {\n  const avatar = useMemo(() => {\n    const id = computeAvatarId(user)\n    return <Avatar id={id} />\n  }, [user])\n\n  if (loading) return <Skeleton />\n  return <div>{avatar}</div>\n}",
@@ -609,6 +577,22 @@
   },
   {
     "ruleId": "",
+    "ruleTitle": "Do not wrap a simple expression with a primitive result type in useMemo",
+    "type": "bad",
+    "code": "function Header({ user, notifications }: Props) {\n  const isLoading = useMemo(() => {\n    return user.isLoading || notifications.isLoading\n  }, [user.isLoading, notifications.isLoading])\n\n  if (isLoading) return <Skeleton />\n  // return some markup\n}",
+    "language": "tsx",
+    "description": "Incorrect example for Do not wrap a simple expression with a primitive result type in useMemo"
+  },
+  {
+    "ruleId": "",
+    "ruleTitle": "Do not wrap a simple expression with a primitive result type in useMemo",
+    "type": "good",
+    "code": "function Header({ user, notifications }: Props) {\n  const isLoading = user.isLoading || notifications.isLoading\n\n  if (isLoading) return <Skeleton />\n  // return some markup\n}",
+    "language": "tsx",
+    "description": "Correct example for Do not wrap a simple expression with a primitive result type in useMemo"
+  },
+  {
+    "ruleId": "",
     "ruleTitle": "Use Transitions for Non-Urgent Updates",
     "type": "bad",
     "code": "function ScrollTracker() {\n  const [scrollY, setScrollY] = useState(0)\n  useEffect(() => {\n    const handler = () => setScrollY(window.scrollY)\n    window.addEventListener('scroll', handler, { passive: true })\n    return () => window.removeEventListener('scroll', handler)\n  }, [])\n}",
@@ -622,101 +606,5 @@
     "code": "import { startTransition } from 'react'\n\nfunction ScrollTracker() {\n  const [scrollY, setScrollY] = useState(0)\n  useEffect(() => {\n    const handler = () => {\n      startTransition(() => setScrollY(window.scrollY))\n    }\n    window.addEventListener('scroll', handler, { passive: true })\n    return () => window.removeEventListener('scroll', handler)\n  }, [])\n}",
     "language": "tsx",
     "description": "non-blocking updates"
-  },
-  {
-    "ruleId": "",
-    "ruleTitle": "Use after() for Non-Blocking Operations",
-    "type": "bad",
-    "code": "import { logUserAction } from '@/app/utils'\n\nexport async function POST(request: Request) {\n  // Perform mutation\n  await updateDatabase(request)\n  \n  // Logging blocks the response\n  const userAgent = request.headers.get('user-agent') || 'unknown'\n  await logUserAction({ userAgent })\n  \n  return new Response(JSON.stringify({ status: 'success' }), {\n    status: 200,\n    headers: { 'Content-Type': 'application/json' }\n  })\n}",
-    "language": "tsx",
-    "description": "blocks response"
-  },
-  {
-    "ruleId": "",
-    "ruleTitle": "Use after() for Non-Blocking Operations",
-    "type": "good",
-    "code": "import { after } from 'next/server'\nimport { headers, cookies } from 'next/headers'\nimport { logUserAction } from '@/app/utils'\n\nexport async function POST(request: Request) {\n  // Perform mutation\n  await updateDatabase(request)\n  \n  // Log after response is sent\n  after(async () => {\n    const userAgent = (await headers()).get('user-agent') || 'unknown'\n    const sessionCookie = (await cookies()).get('session-id')?.value || 'anonymous'\n    \n    logUserAction({ sessionCookie, userAgent })\n  })\n  \n  return new Response(JSON.stringify({ status: 'success' }), {\n    status: 200,\n    headers: { 'Content-Type': 'application/json' }\n  })\n}",
-    "language": "tsx",
-    "description": "non-blocking"
-  },
-  {
-    "ruleId": "",
-    "ruleTitle": "Authenticate Server Actions Like API Routes",
-    "type": "bad",
-    "code": "'use server'\n\nexport async function deleteUser(userId: string) {\n  // Anyone can call this! No auth check\n  await db.user.delete({ where: { id: userId } })\n  return { success: true }\n}",
-    "language": "typescript",
-    "description": "no authentication check"
-  },
-  {
-    "ruleId": "",
-    "ruleTitle": "Authenticate Server Actions Like API Routes",
-    "type": "good",
-    "code": "'use server'\n\nimport { verifySession } from '@/lib/auth'\nimport { unauthorized } from '@/lib/errors'\n\nexport async function deleteUser(userId: string) {\n  // Always check auth inside the action\n  const session = await verifySession()\n  \n  if (!session) {\n    throw unauthorized('Must be logged in')\n  }\n  \n  // Check authorization too\n  if (session.user.role !== 'admin' && session.user.id !== userId) {\n    throw unauthorized('Cannot delete other users')\n  }\n  \n  await db.user.delete({ where: { id: userId } })\n  return { success: true }\n}",
-    "language": "typescript",
-    "description": "authentication inside the action"
-  },
-  {
-    "ruleId": "",
-    "ruleTitle": "Per-Request Deduplication with React.cache()",
-    "type": "bad",
-    "code": "const getUser = cache(async (params: { uid: number }) => {\n  return await db.user.findUnique({ where: { id: params.uid } })\n})\n\n// Each call creates new object, never hits cache\ngetUser({ uid: 1 })\ngetUser({ uid: 1 })  // Cache miss, runs query again",
-    "language": "typescript",
-    "description": "always cache miss"
-  },
-  {
-    "ruleId": "",
-    "ruleTitle": "Per-Request Deduplication with React.cache()",
-    "type": "good",
-    "code": "const params = { uid: 1 }\ngetUser(params)  // Query runs\ngetUser(params)  // Cache hit (same reference)",
-    "language": "typescript",
-    "description": "cache hit"
-  },
-  {
-    "ruleId": "",
-    "ruleTitle": "Avoid Duplicate Serialization in RSC Props",
-    "type": "bad",
-    "code": "// RSC: sends 6 strings (2 arrays × 3 items)\n<ClientList usernames={usernames} usernamesOrdered={usernames.toSorted()} />",
-    "language": "tsx",
-    "description": "duplicates array"
-  },
-  {
-    "ruleId": "",
-    "ruleTitle": "Avoid Duplicate Serialization in RSC Props",
-    "type": "good",
-    "code": "// RSC: send once\n<ClientList usernames={usernames} />\n\n// Client: transform there\n'use client'\nconst sorted = useMemo(() => [...usernames].sort(), [usernames])",
-    "language": "tsx",
-    "description": "sends 3 strings"
-  },
-  {
-    "ruleId": "",
-    "ruleTitle": "Parallel Data Fetching with Component Composition",
-    "type": "bad",
-    "code": "export default async function Page() {\n  const header = await fetchHeader()\n  return (\n    <div>\n      <div>{header}</div>\n      <Sidebar />\n    </div>\n  )\n}\n\nasync function Sidebar() {\n  const items = await fetchSidebarItems()\n  return <nav>{items.map(renderItem)}</nav>\n}",
-    "language": "tsx",
-    "description": "Sidebar waits for Page's fetch to complete"
-  },
-  {
-    "ruleId": "",
-    "ruleTitle": "Parallel Data Fetching with Component Composition",
-    "type": "good",
-    "code": "async function Header() {\n  const data = await fetchHeader()\n  return <div>{data}</div>\n}\n\nasync function Sidebar() {\n  const items = await fetchSidebarItems()\n  return <nav>{items.map(renderItem)}</nav>\n}\n\nexport default function Page() {\n  return (\n    <div>\n      <Header />\n      <Sidebar />\n    </div>\n  )\n}",
-    "language": "tsx",
-    "description": "both fetch simultaneously"
-  },
-  {
-    "ruleId": "",
-    "ruleTitle": "Minimize Serialization at RSC Boundaries",
-    "type": "bad",
-    "code": "async function Page() {\n  const user = await fetchUser()  // 50 fields\n  return <Profile user={user} />\n}\n\n'use client'\nfunction Profile({ user }: { user: User }) {\n  return <div>{user.name}</div>  // uses 1 field\n}",
-    "language": "tsx",
-    "description": "serializes all 50 fields"
-  },
-  {
-    "ruleId": "",
-    "ruleTitle": "Minimize Serialization at RSC Boundaries",
-    "type": "good",
-    "code": "async function Page() {\n  const user = await fetchUser()\n  return <Profile name={user.name} />\n}\n\n'use client'\nfunction Profile({ name }: { name: string }) {\n  return <div>{name}</div>\n}",
-    "language": "tsx",
-    "description": "serializes only 1 field"
   }
 ]

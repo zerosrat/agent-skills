@@ -201,12 +201,11 @@ export async function parseRuleFile(filePath: string): Promise<RuleFile> {
   const sectionMap: Record<string, number> = {
     async: 1,
     bundle: 2,
-    server: 3,
-    client: 4,
-    rerender: 5,
-    rendering: 6,
-    js: 7,
-    advanced: 8,
+    client: 3,
+    rerender: 4,
+    rendering: 5,
+    js: 6,
+    advanced: 7,
   }
 
   // Extract area from filename (first part before first dash)
