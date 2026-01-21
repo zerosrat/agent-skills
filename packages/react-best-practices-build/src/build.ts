@@ -241,7 +241,7 @@ async function build() {
     } catch {
       metadata = {
         version: '1.0',
-        organization: 'Vercel Engineering',
+        organization: 'Fork From Vercel Engineering',
         date: new Date().toLocaleDateString('en-US', {
           month: 'long',
           year: 'numeric',

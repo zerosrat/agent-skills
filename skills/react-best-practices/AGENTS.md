@@ -1,7 +1,7 @@
 # React Best Practices
 
 **Version 1.0.0**  
-Vercel Engineering  
+Fork From Vercel Engineering  
 January 2026
 
 > **Note:**  
@@ -32,8 +32,8 @@ Comprehensive performance optimization guide for React and Next.js applications,
    - 2.5 [Preload Based on User Intent](#25-preload-based-on-user-intent)
 3. [Client-Side Data Fetching](#3-client-side-data-fetching) — **MEDIUM-HIGH**
    - 3.1 [Deduplicate Global Event Listeners](#31-deduplicate-global-event-listeners)
-   - 3.2 [Use Passive Event Listeners for Scrolling Performance](#32-use-passive-event-listeners-for-scrolling-performance)
-   - 3.3 [Use SWR for Automatic Deduplication](#33-use-swr-for-automatic-deduplication)
+   - 3.2 [Use ahooks useRequest for Request Management](#32-use-ahooks-userequest-for-request-management)
+   - 3.3 [Use Passive Event Listeners for Scrolling Performance](#33-use-passive-event-listeners-for-scrolling-performance)
    - 3.4 [Version and Minimize localStorage Data](#34-version-and-minimize-localstorage-data)
 4. [Re-render Optimization](#4-re-render-optimization) — **MEDIUM**
    - 4.1 [Defer State Reads to Usage Point](#41-defer-state-reads-to-usage-point)
@@ -514,7 +514,80 @@ function Profile() {
 }
 ```
 
-### 3.2 Use Passive Event Listeners for Scrolling Performance
+### 3.2 Use ahooks useRequest for Request Management
+
+**Impact: MEDIUM-HIGH (automatic deduplication)**
+
+ahooks useRequest provides automatic request management, caching, deduplication, and polling capabilities.
+
+**Incorrect: manual state management, no caching**
+
+```tsx
+function UserList() {
+  const [users, setUsers] = useState([])
+  const [loading, setLoading] = useState(false)
+  useEffect(() => {
+    setLoading(true)
+    fetch('/api/users')
+      .then(r => r.json())
+      .then(setUsers)
+      .finally(() => setLoading(false))
+  }, [])
+}
+```
+
+**Correct: automatic loading states and error handling**
+
+```tsx
+import { useRequest } from 'ahooks'
+
+function UserList() {
+  const { data: users, loading, error } = useRequest(() => 
+    fetch('/api/users').then(r => r.json())
+  )
+}
+```
+
+**For mutations: optimistic updates**
+
+```tsx
+import { useRequest } from 'ahooks'
+
+function UserList() {
+  const { data: users, mutate } = useRequest(
+    () => fetch('/api/users').then(r => r.json())
+  )
+  
+  const handleDelete = async (userId: string) => {
+    // Optimistic update: immediately update UI
+    mutate(users.filter(u => u.id !== userId))
+    
+    try {
+      await fetch(`/api/users/${userId}`, { method: 'DELETE' })
+      // Optionally refetch to ensure sync
+      // refresh()
+    } catch (error) {
+      // Revert on error
+      mutate(users)
+    }
+  }
+  
+  return (
+    <div>
+      {users?.map(user => (
+        <div key={user.id}>
+          {user.name}
+          <button onClick={() => handleDelete(user.id)}>Delete</button>
+        </div>
+      ))}
+    </div>
+  )
+}
+```
+
+Reference: [https://ahooks.js.org/hooks/use-request](https://ahooks.js.org/hooks/use-request)
+
+### 3.3 Use Passive Event Listeners for Scrolling Performance
 
 **Impact: MEDIUM (eliminates scroll delay caused by event listeners)**
 
@@ -557,58 +630,6 @@ useEffect(() => {
 **Use passive when:** tracking/analytics, logging, any listener that doesn't call `preventDefault()`.
 
 **Don't use passive when:** implementing custom swipe gestures, custom zoom controls, or any listener that needs `preventDefault()`.
-
-### 3.3 Use SWR for Automatic Deduplication
-
-**Impact: MEDIUM-HIGH (automatic deduplication)**
-
-SWR enables request deduplication, caching, and revalidation across component instances.
-
-**Incorrect: no deduplication, each instance fetches**
-
-```tsx
-function UserList() {
-  const [users, setUsers] = useState([])
-  useEffect(() => {
-    fetch('/api/users')
-      .then(r => r.json())
-      .then(setUsers)
-  }, [])
-}
-```
-
-**Correct: multiple instances share one request**
-
-```tsx
-import useSWR from 'swr'
-
-function UserList() {
-  const { data: users } = useSWR('/api/users', fetcher)
-}
-```
-
-**For immutable data:**
-
-```tsx
-import { useImmutableSWR } from '@/lib/swr'
-
-function StaticContent() {
-  const { data } = useImmutableSWR('/api/config', fetcher)
-}
-```
-
-**For mutations:**
-
-```tsx
-import { useSWRMutation } from 'swr/mutation'
-
-function UpdateButton() {
-  const { trigger } = useSWRMutation('/api/user', updateUser)
-  return <button onClick={() => trigger()}>Update</button>
-}
-```
-
-Reference: [https://swr.vercel.app](https://swr.vercel.app)
 
 ### 3.4 Version and Minimize localStorage Data
 

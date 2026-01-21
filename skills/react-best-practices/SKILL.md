@@ -1,15 +1,11 @@
 ---
 name: react-best-practices
-description: React v16 client-side performance optimization guidelines. Use when writing, reviewing, or refactoring React code to ensure optimal performance patterns for client-side rendering. Triggers on tasks involving React components, data fetching, bundle optimization, or performance improvements.
-license: MIT
-metadata:
-  author: vercel
-  version: "1.0.0"
+description: React client-side performance optimization guidelines. Use when writing, reviewing, or refactoring React code to ensure optimal performance patterns for client-side rendering. Triggers on tasks involving React components, data fetching, bundle optimization, or performance improvements.
 ---
 
 # React Best Practices
 
-Client-side performance optimization guide for React v16 applications. Contains 34 rules across 6 categories, prioritized by impact to guide automated refactoring and code generation.
+Client-side performance optimization guide for React applications. Contains 34 rules across 6 categories, prioritized by impact to guide automated refactoring and code generation.
 
 ## When to Apply
 
@@ -49,7 +45,7 @@ Reference these guidelines when:
 
 ### 3. Client-Side Data Fetching (MEDIUM-HIGH)
 
-- `client-swr-dedup` - Use SWR for automatic request deduplication
+- `client-use-request-dedup` - Use useRequest for automatic request deduplication
 - `client-event-listeners` - Deduplicate global event listeners
 
 ### 4. Re-render Optimization (MEDIUM)

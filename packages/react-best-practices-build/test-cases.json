@@ -177,19 +177,19 @@
   },
   {
     "ruleId": "",
-    "ruleTitle": "Use SWR for Automatic Deduplication",
+    "ruleTitle": "Use ahooks useRequest for Request Management",
     "type": "bad",
-    "code": "function UserList() {\n  const [users, setUsers] = useState([])\n  useEffect(() => {\n    fetch('/api/users')\n      .then(r => r.json())\n      .then(setUsers)\n  }, [])\n}",
+    "code": "function UserList() {\n  const [users, setUsers] = useState([])\n  const [loading, setLoading] = useState(false)\n  useEffect(() => {\n    setLoading(true)\n    fetch('/api/users')\n      .then(r => r.json())\n      .then(setUsers)\n      .finally(() => setLoading(false))\n  }, [])\n}",
     "language": "tsx",
-    "description": "no deduplication, each instance fetches"
+    "description": "manual state management, no caching"
   },
   {
     "ruleId": "",
-    "ruleTitle": "Use SWR for Automatic Deduplication",
+    "ruleTitle": "Use ahooks useRequest for Request Management",
     "type": "good",
-    "code": "import useSWR from 'swr'\n\nfunction UserList() {\n  const { data: users } = useSWR('/api/users', fetcher)\n}",
+    "code": "import { useRequest } from 'ahooks'\n\nfunction UserList() {\n  const { data: users, loading, error } = useRequest(() => \n    fetch('/api/users').then(r => r.json())\n  )\n}",
     "language": "tsx",
-    "description": "multiple instances share one request"
+    "description": "automatic loading states and error handling"
   },
   {
     "ruleId": "",
