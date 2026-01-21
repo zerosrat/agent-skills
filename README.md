@@ -27,7 +27,7 @@ React and Next.js performance optimization guidelines from Vercel Engineering. C
 ## Installation
 
 ```bash
-npx add-skill vercel-labs/agent-skills
+npx add-skill zerosrat/agent-skills
 ```
 
 ## Usage
